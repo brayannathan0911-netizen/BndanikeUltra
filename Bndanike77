@@ -1,217 +1,116 @@
---[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox.
-	Use at your own risk!
-]]
+local player = game.Players.LocalPlayer
+local JUMP_POWER_DEFAULT = 50
+local jumpEnabled = true -- true = pulo liberado
 
--- 💯 O ESTRUPADOR
--- Delta Brookhaven RP
--- Atravessar 100% • Desarme • AntiPulo • FPS Boost
--- Painel flutuante e arrastável
-
--- =========================
--- SERVICES
--- =========================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
-local LocalPlayer = Players.LocalPlayer
-
--- =========================
--- CHARACTER CACHE
--- =========================
-local Character, Humanoid, RootPart
-
-local function UpdateChar()
-	Character = LocalPlayer.Character
-	if Character then
-		Humanoid = Character:WaitForChild("Humanoid")
-		RootPart = Character:WaitForChild("HumanoidRootPart")
-	end
-end
-
-UpdateChar()
-LocalPlayer.CharacterAdded:Connect(UpdateChar)
-
--- =========================
--- BALL DETECTION
--- =========================
-local function GetBall()
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			local name = obj.Name:lower()
-			if name:find("ball") or name:find("bola") then
-				return obj
-			end
+-- Função pra ligar/desligar o pulo
+local function setJumpEnabled(enabled)
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		if enabled then
+			humanoid.JumpPower = JUMP_POWER_DEFAULT
+		else
+			humanoid.JumpPower = 0
+			humanoid.Jump = false
 		end
 	end
 end
 
-local Ball = GetBall()
+-- Criar o botão flutuante
+local function createFloatingButton()
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "JumpToggleGui"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- =========================
--- SETTINGS
--- =========================
-local Settings = {
-	PainelAberto = true,
-	Atravessar = false,
-	DesarmeAuto = false,
-	AntiPulo = false,
-	FPSBoost = true
-}
+	local button = Instance.new("TextButton")
+	button.Name = "FloatingJumpButton"
+	button.Size = UDim2.new(0, 40, 0, 40)
+	button.Position = UDim2.new(0, 10, 0.5, -20)
+	button.BorderSizePixel = 0
+	button.TextSize = 12
+	button.AutoButtonColor = false
+	button.Parent = screenGui
+	button.ClipsDescendants = true
 
--- =========================
--- ATRAVESSAR 99999%
--- =========================
-local function SetCharacterCollision(char, state)
-	for _, part in pairs(char:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.CanCollide = state
-			part.CanTouch = state
-			part.CanQuery = state
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = button
+
+	-- Visual
+	local function updateVisual()
+		if jumpEnabled then
+			button.Text = "OFF"
+			button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			button.TextColor3 = Color3.fromRGB(0, 0, 0)
+		else
+			button.Text = "ON"
+			button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+			button.TextColor3 = Color3.fromRGB(255, 140, 0)
 		end
 	end
-end
 
-local function AtravessarLoop()
-	if not Settings.Atravessar then return end
-	if not RootPart then return end
+	----------------------------------------------------------------
+	-- 🔥 DRAG MELHORADO (EXTREMO, SUAVE, PC + MOBILE)
+	----------------------------------------------------------------
+	local UIS = game:GetService("UserInputService")
+	local dragging = false
+	local dragStart
+	local startPos
+	local activeInput
 
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character then
-			for _, part in pairs(plr.Character:GetDescendants()) do
-				if part:IsA("BasePart") then
-					-- ignora bola se estiver no personagem
-					if Ball and part == Ball then
-						continue
-					end
-					part.CanCollide = false
-					part.CanTouch = false
-					part.CanQuery = false
-				end
-			end
+	button.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+		or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = button.Position
+			activeInput = input
 		end
-	end
-end
-
-local function RestaurarColisoes()
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character then
-			SetCharacterCollision(plr.Character, true)
-		end
-	end
-end
-
--- =========================
--- DESARME AUTO
--- =========================
-local function DesarmeAutoFunc()
-	if not Settings.DesarmeAuto or not Ball or not RootPart then return end
-
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-			local dist = (plr.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude
-			if dist < 7 then
-				Ball.CFrame = RootPart.CFrame * CFrame.new(0, 0, -2)
-			end
-		end
-	end
-end
-
--- =========================
--- FPS BOOST
--- =========================
-if Settings.FPSBoost then
-	for _, v in pairs(workspace:GetDescendants()) do
-		if v:IsA("BasePart") then
-			v.Material = Enum.Material.SmoothPlastic
-			v.Reflectance = 0
-		elseif v:IsA("Decal") or v:IsA("Texture") then
-			v.Transparency = 0.5
-		end
-	end
-end
-
--- =========================
--- GUI
--- =========================
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "Bndanike77_GUI"
-
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 240, 0, 230)
-MainFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Visible = Settings.PainelAberto
-
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1,0,0,35)
-Title.BackgroundColor3 = Color3.fromRGB(40,40,40)
-Title.Text = "💯 O ESTRUPADOR"
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
-Title.TextColor3 = Color3.fromRGB(255,255,255)
-
--- =========================
--- BUTTON CREATOR
--- =========================
-local function CreateButton(text, y, callback)
-	local btn = Instance.new("TextButton", MainFrame)
-	btn.Size = UDim2.new(0.9,0,0,30)
-	btn.Position = UDim2.new(0.05,0,0,35 + y)
-	btn.BackgroundColor3 = Color3.fromRGB(55,55,55)
-	btn.TextColor3 = Color3.fromRGB(255,255,255)
-	btn.Font = Enum.Font.SourceSans
-	btn.TextSize = 16
-	btn.Text = text .. " [OFF]"
-
-	btn.MouseButton1Click:Connect(function()
-		Settings[text] = not Settings[text]
-		btn.Text = text .. (Settings[text] and " [ON]" or " [OFF]")
-		if callback then callback(Settings[text]) end
 	end)
+
+	button.InputEnded:Connect(function(input)
+		if input == activeInput then
+			dragging = false
+			activeInput = nil
+		end
+	end)
+
+	UIS.InputChanged:Connect(function(input)
+		if dragging and input == activeInput then
+			local delta = input.Position - dragStart
+			button.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+	----------------------------------------------------------------
+
+	-- Clique
+	button.MouseButton1Click:Connect(function()
+		jumpEnabled = not jumpEnabled
+		setJumpEnabled(jumpEnabled)
+		updateVisual()
+	end)
+
+	-- Respawn
+	player.CharacterAdded:Connect(function()
+		task.wait(0.1)
+		setJumpEnabled(jumpEnabled)
+		updateVisual()
+	end)
+
+	setJumpEnabled(jumpEnabled)
+	updateVisual()
 end
 
-CreateButton("Atravessar", 0, function(state)
-	if not state then
-		RestaurarColisoes()
-	end
-end)
-
-CreateButton("DesarmeAuto", 40)
-CreateButton("AntiPulo", 80, function(state)
-	if Humanoid then
-		Humanoid.JumpPower = state and 0 or 50
-	end
-end)
-
-CreateButton("FPSBoost", 120)
-
--- =========================
--- TOGGLE BUTTON
--- =========================
-local Toggle = Instance.new("TextButton", ScreenGui)
-Toggle.Size = UDim2.new(0,150,0,35)
-Toggle.Position = UDim2.new(0.05,0,0.12,0)
-Toggle.BackgroundColor3 = Color3.fromRGB(90,90,90)
-Toggle.TextColor3 = Color3.fromRGB(255,255,255)
-Toggle.Font = Enum.Font.SourceSansBold
-Toggle.TextSize = 16
-Toggle.Text = "Abrir / Fechar"
-Toggle.Active = true
-Toggle.Draggable = true
-
-Toggle.MouseButton1Click:Connect(function()
-	Settings.PainelAberto = not Settings.PainelAberto
-	MainFrame.Visible = Settings.PainelAberto
-end)
-
--- =========================
--- MAIN LOOP
--- =========================
-RunService.RenderStepped:Connect(function()
-	AtravessarLoop()
-	DesarmeAutoFunc()
-end)
+-- Garantir PlayerGui
+if player:FindFirstChild("PlayerGui") then
+	createFloatingButton()
+else
+	player:WaitForChild("PlayerGui")
+	createFloatingButton()
+end
