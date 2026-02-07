@@ -1,206 +1,65 @@
--- HUNK HUB🫂
--- Condução • Noclip • AntiLag • Big Chute • Desarme
--- Client-Side
+--// Painel Speed 25 - Corrigido //--
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local LocalPlayer = Players.LocalPlayer
+local player = game.Players.LocalPlayer
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.ResetOnSpawn = false
+gui.Name = "SpeedGui"
 
--- ========================
--- CONFIG
--- ========================
-local Config = {
-    Active = {
-        NoClip = false,
-        BallControl = false,
-        Disarm = false,
-        Reaction = true,
-        AntiLag = false,
-        BigKick = false
-    },
-    Values = {
-        ReactionTime = 0.25,
-        BallControlDistance = 2.5,
-        BigKickForce = 999999 -- 💀 FORÇA EXTREMA
-    }
-}
+-- Janela principal
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 150, 0, 70)
+frame.Position = UDim2.new(0.05, 0, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
 
--- ========================
--- CACHE
--- ========================
-local Char, Root
-local function UpdateChar()
-    Char = LocalPlayer.Character
-    if Char then
-        Root = Char:WaitForChild("HumanoidRootPart")
-    end
-end
-UpdateChar()
-LocalPlayer.CharacterAdded:Connect(UpdateChar)
+-- Título
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 25)
+title.BackgroundTransparency = 1
+title.Text = "Speed 25"
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
 
--- ========================
--- BOLA
--- ========================
-local function GetBall()
-    return workspace:FindFirstChild("Ball") or workspace:FindFirstChild("Football")
-end
+-- Botão
+local toggle = Instance.new("TextButton", frame)
+toggle.Size = UDim2.new(1, -20, 0, 30)
+toggle.Position = UDim2.new(0, 10, 0, 35)
+toggle.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+toggle.TextColor3 = Color3.fromRGB(255,255,255)
+toggle.Font = Enum.Font.GothamBold
+toggle.TextSize = 16
+toggle.Text = "Ativar"
 
--- ========================
--- TEMPO DE REAÇÃO
--- ========================
-local lastReact = 0
-local function CanReact()
-    if not Config.Active.Reaction then return true end
-    if tick() - lastReact >= Config.Values.ReactionTime then
-        lastReact = tick()
-        return true
-    end
-    return false
+-- Variáveis
+local ativo = false
+local velocidade = 25
+
+-- Função
+local function aplicarSpeed()
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = ativo and velocidade or 16
+	end
 end
 
--- ========================
--- NOCLIP (PAREDES)
--- ========================
-local function TrueNoClip()
-    if not Char then return end
-    for _, v in ipairs(Char:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.CanCollide = false
-        end
-    end
-end
-
--- ========================
--- NO COLLIDE JOGADORES
--- ========================
-local function PlayerNoCollide()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            for _, v in ipairs(p.Character:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                end
-            end
-        end
-    end
-end
-
--- ========================
--- CONDUÇÃO DE BOLA
--- ========================
-local function BallControl()
-    local ball = GetBall()
-    if not ball or not Root then return end
-    ball:SetNetworkOwner(LocalPlayer)
-    ball.CFrame = Root.CFrame * CFrame.new(0, -1, -Config.Values.BallControlDistance)
-    ball.AssemblyLinearVelocity = Vector3.zero
-    ball.AssemblyAngularVelocity = Vector3.zero
-end
-
--- ========================
--- DESARMAR
--- ========================
-local function Disarm()
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
-            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-            local tool = p.Character:FindFirstChildOfClass("Tool")
-            if hrp and tool and Root then
-                if (hrp.Position - Root.Position).Magnitude <= 10 then
-                    tool.Parent = p.Backpack
-                end
-            end
-        end
-    end
-end
-
--- ========================
--- BIG CHUTE
--- ========================
-local function BigKick()
-    local ball = GetBall()
-    if not ball or not Root then return end
-    ball:SetNetworkOwner(LocalPlayer)
-    ball.AssemblyLinearVelocity = Root.CFrame.LookVector * Config.Values.BigKickForce
-end
-
--- ========================
--- ANTI LAG
--- ========================
-local function AntiLag()
-    Lighting.GlobalShadows = false
-    Lighting.FogEnd = 1e9
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-end
-
--- ========================
--- LOOP
--- ========================
-RunService.Heartbeat:Connect(function()
-    if Config.Active.AntiLag then AntiLag() end
-    if not CanReact() then return end
-
-    if Config.Active.NoClip then TrueNoClip() end
-
-    if Config.Active.BallControl then
-        BallControl()
-        PlayerNoCollide()
-    end
-
-    if Config.Active.Disarm then Disarm() end
-
-    if Config.Active.BigKick then
-        BigKick()
-        Config.Active.BigKick = false
-    end
+-- Evento do botão
+toggle.MouseButton1Click:Connect(function()
+	ativo = not ativo
+	if ativo then
+		toggle.Text = "Desativar"
+		toggle.BackgroundColor3 = Color3.fromRGB(0,170,0)
+	else
+		toggle.Text = "Ativar"
+		toggle.BackgroundColor3 = Color3.fromRGB(170,0,0)
+	end
+	aplicarSpeed()
 end)
 
--- ========================
--- GUI
--- ========================
-local gui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-gui.Name = "HunkPainelHub"
-
-local main = Instance.new("Frame", gui)
-main.Size = UDim2.new(0, 260, 0, 360)
-main.Position = UDim2.new(0.5, -130, 0.5, -180)
-main.BackgroundColor3 = Color3.fromRGB(25,25,30)
-main.Active = true
-main.Draggable = true
-Instance.new("UICorner", main)
-
-local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1,0,0,40)
-title.Text = "🫂 Hunk Painel Hub"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 14
-title.TextColor3 = Color3.fromRGB(0,255,150)
-title.BackgroundTransparency = 1
-
-local function Button(text, key, y)
-    local b = Instance.new("TextButton", main)
-    b.Size = UDim2.new(1,-20,0,35)
-    b.Position = UDim2.new(0,10,0,y)
-    b.Text = text.." [OFF]"
-    b.Font = Enum.Font.Gotham
-    b.TextSize = 12
-    b.BackgroundColor3 = Color3.fromRGB(40,40,50)
-    Instance.new("UICorner", b)
-
-    b.MouseButton1Click:Connect(function()
-        Config.Active[key] = not Config.Active[key]
-        b.Text = text .. (Config.Active[key] and " [ON]" or " [OFF]")
-        b.BackgroundColor3 = Config.Active[key] and Color3.fromRGB(0,255,150) or Color3.fromRGB(40,40,50)
-    end)
-end
-
-Button("👻 Atravessar ate a alma(não ative)", "NoClip", 50)
-Button("⚽ Condução de peteca", "BallControl", 90)
-Button("🧍‍♂️ Atravessar theus", "BallControl", 130)
-Button("🔫 Van dijk", "Disarm", 170)
-Button("🚀 No Lag", "AntiLag", 210)
-Button("💥 chute power", "BigKick", 250)
-Button("⏱ Tempo de Reação", "Reaction", 290)
-
-print("🫂 Hunk Painel Hub carregado com sucesso!")
+-- Garante que reaplica após respawn
+player.CharacterAdded:Connect(function()
+	repeat task.wait() until player.Character:FindFirstChildOfClass("Humanoid")
+	aplicarSpeed()
+end)
